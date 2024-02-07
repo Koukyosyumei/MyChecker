@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdio>
 #include <memory>
 #include <string>
 #include <vector>
@@ -76,28 +77,24 @@ class LogicOperator : public Formula {
     }
 };
 
+namespace CTL {
+
 // ############ Define Const Formulas #################
 
 class Bool : public Formula {
    public:
     bool val;
     Bool(bool val) : Formula(OpCode::Bool, {}, {"true", "false"}), val(val) {}
-
-    std::shared_ptr<Bool> clone() const { return std::make_shared<Bool>(val); }
+    std::shared_ptr<Bool> clone() const {
+        return std::make_shared<CTL::Bool>(val);
+    }
     std::string str() const override { return val ? "true" : "false"; }
-
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return clone();
-    }
-    std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return clone();
-    }
     bool is_a_state_formula() const override { return true; }
-};
 
-std::shared_ptr<Formula> LNot(std::shared_ptr<Formula> formula);
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
+    std::shared_ptr<Formula> get_equivalent_non_fair_formula(
+        std::shared_ptr<Formula> fairAP) const override;
+};
 
 // ############# Define LogicOperators #################
 
@@ -111,29 +108,14 @@ class Not : public LogicOperator {
         return std::make_shared<Not>(subformulas[0]);
     }
 
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return LNot(subformulas[0]->get_equivalent_restricted_formula());
-    }
-    std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return std::make_shared<Not>(
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP));
-    }
     bool is_a_state_formula() const override {
         return subformulas[0]->is_a_state_formula();
     }
-};
 
-inline std::shared_ptr<Formula> LNot(std::shared_ptr<Formula> formula) {
-    if (formula->opcode == OpCode::Not) {
-        if (formula->subformulas[0]->opcode == OpCode::Not) {
-            return LNot(formula->subformulas[0]->subformulas[0]);
-        }
-        return formula->subformulas[0];
-    }
-    return std::make_shared<class ::Not>(formula);
-}
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
+    std::shared_ptr<Formula> get_equivalent_non_fair_formula(
+        std::shared_ptr<Formula> fairAP) const override;
+};
 
 class Or : public LogicOperator {
    public:
@@ -143,18 +125,9 @@ class Or : public LogicOperator {
         return "(" + subformulas[0]->str() + " or " + subformulas[1]->str() +
                ")";
     }
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<class ::Or>(
-            subformulas[0]->get_equivalent_restricted_formula(),
-            subformulas[1]->get_equivalent_restricted_formula());
-    }
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return std::make_shared<Or>(
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP),
-            subformulas[1]->get_equivalent_non_fair_formula(fairAP));
-    }
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 class And : public Formula {
@@ -165,18 +138,9 @@ class And : public Formula {
         return "(" + subformulas[0]->str() + " and " + subformulas[1]->str() +
                ")";
     }
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<class ::Not>(std::make_shared<class ::Or>(
-            LNot(subformulas[0]->get_equivalent_restricted_formula()),
-            LNot(subformulas[1]->get_equivalent_restricted_formula())));
-    }
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return std::make_shared<And>(
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP),
-            subformulas[1]->get_equivalent_non_fair_formula(fairAP));
-    }
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 class Imply : public Formula {
@@ -187,18 +151,9 @@ class Imply : public Formula {
         return "(" + subformulas[0]->str() + " -> " + subformulas[1]->str() +
                ")";
     }
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<class ::Or>(
-            LNot(subformulas[0]->get_equivalent_restricted_formula()),
-            subformulas[1]->get_equivalent_restricted_formula());
-    }
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return std::make_shared<Imply>(
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP),
-            subformulas[1]->get_equivalent_non_fair_formula(fairAP));
-    }
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 // ######## Define PathQuantifiers #########
@@ -207,38 +162,18 @@ class E : public PathQuantifier {
    public:
     E(std::shared_ptr<Formula> phi) : PathQuantifier(OpCode::E, {phi}, {"E"}) {}
 
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<class E>(
-            subformulas[0]->get_equivalent_restricted_formula());
-    }
-
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        std::shared_ptr<Formula> sf =
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP);
-        return std::make_shared<class ::E>(
-            LNot(std::make_shared<class ::And>(fairAP, sf)));
-    }
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 class A : public PathQuantifier {
    public:
     A(std::shared_ptr<Formula> phi) : PathQuantifier(OpCode::A, {phi}, {"A"}) {}
 
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<class Not>(std::make_shared<class E>(
-            LNot(subformulas[0]->get_equivalent_restricted_formula())));
-    }
-
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        std::shared_ptr<Formula> sf =
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP);
-        return std::make_shared<class ::A>(
-            LNot(std::make_shared<class ::And>(LNot(sf), fairAP)));
-    }
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 // ########## Define TemporalOperators ############
@@ -248,11 +183,7 @@ class X : public TemporalOperator {
     X(std::shared_ptr<Formula> phi)
         : TemporalOperator(OpCode::X, {phi}, {"X"}) {}
 
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<class ::X>(
-            subformulas[0]->get_equivalent_restricted_formula());
-    }
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
 };
 
 class U : public TemporalOperator {
@@ -260,19 +191,9 @@ class U : public TemporalOperator {
     U(std::shared_ptr<Formula> phi, std::shared_ptr<Formula> psi)
         : TemporalOperator(OpCode::U, {phi, psi}, {"U"}) {}
 
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return std::make_shared<U>(
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP),
-            subformulas[1]->get_equivalent_non_fair_formula(fairAP));
-    }
-
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<U>(
-            subformulas[0]->get_equivalent_restricted_formula(),
-            subformulas[1]->get_equivalent_restricted_formula());
-    }
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 class R : public TemporalOperator {
@@ -280,19 +201,9 @@ class R : public TemporalOperator {
     R(std::shared_ptr<Formula> phi, std::shared_ptr<Formula> psi)
         : TemporalOperator(OpCode::R, {phi, psi}, {"R"}) {}
 
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return std::make_shared<R>(
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP),
-            subformulas[1]->get_equivalent_non_fair_formula(fairAP));
-    }
-
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<class ::Not>(std::make_shared<class ::U>(
-            LNot(subformulas[0]->get_equivalent_restricted_formula()),
-            LNot(subformulas[1]->get_equivalent_restricted_formula())));
-    }
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 class F : public TemporalOperator {
@@ -300,18 +211,9 @@ class F : public TemporalOperator {
     F(std::shared_ptr<Formula> phi)
         : TemporalOperator(OpCode::F, {phi}, {"F"}) {}
 
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return std::make_shared<F>(
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP));
-    }
-
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<class ::U>(
-            std::make_shared<class ::Bool>(true),
-            subformulas[0]->get_equivalent_restricted_formula());
-    }
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 class G : public TemporalOperator {
@@ -319,18 +221,9 @@ class G : public TemporalOperator {
     G(std::shared_ptr<Formula> phi)
         : TemporalOperator(OpCode::G, {phi}, {"G"}) {}
 
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return std::make_shared<G>(
-            subformulas[0]->get_equivalent_non_fair_formula(fairAP));
-    }
-
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return std::make_shared<class ::Not>(std::make_shared<class ::U>(
-            std::make_shared<class ::Bool>(true),
-            LNot(subformulas[0]->get_equivalent_restricted_formula())));
-    }
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 // ######### Define Atomic Proposition ##########
@@ -346,14 +239,197 @@ class AtomicProposition : public Formula {
     }
     std::string str() const override { return name; }
 
-    std::shared_ptr<Formula> get_equivalent_restricted_formula()
-        const override {
-        return clone();
-    }
+    std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
     std::shared_ptr<Formula> get_equivalent_non_fair_formula(
-        std::shared_ptr<Formula> fairAP) const override {
-        return std::make_shared<class ::And>(clone(), fairAP);
-    }
+        std::shared_ptr<Formula> fairAP) const override;
     bool is_a_state_formula() const override { return true; }
 };
 
+// ############ Define Compositional Operators
+
+inline std::shared_ptr<Formula> AX(std::shared_ptr<Formula> formula) {
+    return std::make_shared<A>(std::make_shared<X>(formula));
+}
+
+// ############ Define Equivalent Formulas ########
+
+inline std::shared_ptr<Formula> LNot(std::shared_ptr<Formula> formula) {
+    if (formula->opcode == OpCode::Not) {
+        if (formula->subformulas[0]->opcode == OpCode::Not) {
+            return LNot(formula->subformulas[0]->subformulas[0]);
+        }
+        return formula->subformulas[0];
+    }
+    return std::make_shared<CTL::Not>(formula);
+}
+
+inline std::shared_ptr<Formula> CTL::Bool::get_equivalent_restricted_formula()
+    const {
+    return clone();
+}
+inline std::shared_ptr<Formula> CTL::Bool::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return clone();
+}
+
+inline std::shared_ptr<Formula> CTL::Not::get_equivalent_restricted_formula()
+    const {
+    return LNot(subformulas[0]->get_equivalent_restricted_formula());
+}
+inline std::shared_ptr<Formula> CTL::Not::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<Not>(
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP));
+}
+
+inline std::shared_ptr<Formula> CTL::Or::get_equivalent_restricted_formula()
+    const {
+    return std::make_shared<CTL::Or>(
+        subformulas[0]->get_equivalent_restricted_formula(),
+        subformulas[1]->get_equivalent_restricted_formula());
+}
+inline std::shared_ptr<Formula> CTL::Or::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<Or>(
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP),
+        subformulas[1]->get_equivalent_non_fair_formula(fairAP));
+}
+
+inline std::shared_ptr<Formula> CTL::And::get_equivalent_restricted_formula()
+    const {
+    return std::make_shared<CTL::Not>(std::make_shared<CTL::Or>(
+        LNot(subformulas[0]->get_equivalent_restricted_formula()),
+        LNot(subformulas[1]->get_equivalent_restricted_formula())));
+}
+inline std::shared_ptr<Formula> CTL::And::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<And>(
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP),
+        subformulas[1]->get_equivalent_non_fair_formula(fairAP));
+}
+
+inline std::shared_ptr<Formula> CTL::Imply::get_equivalent_restricted_formula()
+    const {
+    return std::make_shared<CTL::Or>(
+        LNot(subformulas[0]->get_equivalent_restricted_formula()),
+        subformulas[1]->get_equivalent_restricted_formula());
+}
+inline std::shared_ptr<Formula> CTL::Imply::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<Imply>(
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP),
+        subformulas[1]->get_equivalent_non_fair_formula(fairAP));
+}
+
+inline std::shared_ptr<Formula> CTL::E::get_equivalent_restricted_formula()
+    const {
+    return std::make_shared<CTL::E>(
+        subformulas[0]->get_equivalent_restricted_formula());
+}
+
+inline std::shared_ptr<Formula> CTL::E::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    std::shared_ptr<Formula> sf =
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP);
+    return std::make_shared<CTL::E>(
+        LNot(std::make_shared<CTL::And>(fairAP, sf)));
+}
+
+inline std::shared_ptr<Formula> CTL::A::get_equivalent_restricted_formula()
+    const {
+    std::shared_ptr<Formula> p_formula = subformulas[0];
+    std::shared_ptr<Formula> sf0 =
+        p_formula->subformulas[0]->get_equivalent_restricted_formula();
+    std::shared_ptr<Formula> neg_sf0 = LNot(sf0);
+
+    switch (p_formula->opcode) {
+        case (OpCode::X): {
+            return std::make_shared<CTL::Not>(
+                std::make_shared<CTL::E>(std::make_shared<CTL::X>(neg_sf0)));
+        }
+        case (OpCode::F): {
+        }
+    }
+
+    return std::make_shared<CTL::Not>(std::make_shared<CTL::E>(
+        LNot(subformulas[0]->get_equivalent_restricted_formula())));
+}
+
+inline std::shared_ptr<Formula> CTL::A::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    std::shared_ptr<Formula> sf =
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP);
+    return std::make_shared<CTL::A>(
+        LNot(std::make_shared<CTL::And>(LNot(sf), fairAP)));
+}
+inline std::shared_ptr<Formula> CTL::X::get_equivalent_restricted_formula()
+    const {
+    return std::make_shared<CTL::X>(
+        subformulas[0]->get_equivalent_restricted_formula());
+}
+
+inline std::shared_ptr<Formula> CTL::U::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<U>(
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP),
+        subformulas[1]->get_equivalent_non_fair_formula(fairAP));
+}
+
+inline std::shared_ptr<Formula> CTL::U::get_equivalent_restricted_formula()
+    const {
+    return std::make_shared<U>(
+        subformulas[0]->get_equivalent_restricted_formula(),
+        subformulas[1]->get_equivalent_restricted_formula());
+}
+
+inline std::shared_ptr<Formula> CTL::R::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<R>(
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP),
+        subformulas[1]->get_equivalent_non_fair_formula(fairAP));
+}
+
+inline std::shared_ptr<Formula> CTL::R::get_equivalent_restricted_formula()
+    const {
+    return std::make_shared<CTL::Not>(std::make_shared<CTL::U>(
+        LNot(subformulas[0]->get_equivalent_restricted_formula()),
+        LNot(subformulas[1]->get_equivalent_restricted_formula())));
+}
+
+inline std::shared_ptr<Formula> CTL::F::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<F>(
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP));
+}
+
+inline std::shared_ptr<Formula> CTL::F::get_equivalent_restricted_formula()
+    const {
+    return std::make_shared<CTL::U>(
+        std::make_shared<CTL::Bool>(true),
+        subformulas[0]->get_equivalent_restricted_formula());
+}
+
+inline std::shared_ptr<Formula> CTL::G::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<G>(
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP));
+}
+
+inline std::shared_ptr<Formula> CTL::G::get_equivalent_restricted_formula()
+    const {
+    return std::make_shared<CTL::Not>(std::make_shared<CTL::U>(
+        std::make_shared<CTL::Bool>(true),
+        LNot(subformulas[0]->get_equivalent_restricted_formula())));
+}
+
+inline std::shared_ptr<Formula>
+CTL::AtomicProposition::get_equivalent_restricted_formula() const {
+    return clone();
+}
+inline std::shared_ptr<Formula>
+CTL::AtomicProposition::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<CTL::And>(clone(), fairAP);
+}
+
+}  // namespace CTL
