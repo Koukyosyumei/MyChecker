@@ -251,6 +251,40 @@ inline std::shared_ptr<Formula> AX(std::shared_ptr<Formula> formula) {
     return std::make_shared<A>(std::make_shared<X>(formula));
 }
 
+inline std::shared_ptr<Formula> EX(std::shared_ptr<Formula> formula) {
+    return std::make_shared<E>(std::make_shared<X>(formula));
+}
+
+inline std::shared_ptr<Formula> AF(std::shared_ptr<Formula> formula) {
+    return std::make_shared<A>(std::make_shared<F>(formula));
+}
+
+inline std::shared_ptr<Formula> EF(std::shared_ptr<Formula> formula) {
+    return std::make_shared<E>(std::make_shared<F>(formula));
+}
+
+inline std::shared_ptr<Formula> EG(std::shared_ptr<Formula> formula) {
+    return std::make_shared<E>(std::make_shared<G>(formula));
+}
+
+inline std::shared_ptr<Formula> AU(std::shared_ptr<Formula> formula) {
+    return std::make_shared<A>(std::make_shared<U>(formula));
+}
+
+inline std::shared_ptr<Formula> EU(std::shared_ptr<Formula> formula) {
+    return std::make_shared<E>(std::make_shared<U>(formula));
+}
+
+inline std::shared_ptr<Formula> AR(std::shared_ptr<Formula> psi,
+                                   std::shared_ptr<Formula> phi) {
+    return std::make_shared<A>(std::make_shared<R>(psi, phi));
+}
+
+inline std::shared_ptr<Formula> ER(std::shared_ptr<Formula> psi,
+                                   std ::shared_ptr<Formula> phi) {
+    return std::make_shared<E>(std::make_shared<R>(psi, phi));
+}
+
 // ############ Define Equivalent Formulas ########
 
 inline std::shared_ptr<Formula> LNot(std::shared_ptr<Formula> formula) {
