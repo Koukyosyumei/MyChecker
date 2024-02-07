@@ -3,7 +3,22 @@
 #include <string>
 #include <vector>
 
-typedef enum { Abs, Atomic, And, Or, Not, Imply, A, E, X, F, G, U, R } OpCode;
+typedef enum {
+    Abs,
+    Atomic,
+    Bool,
+    And,
+    Or,
+    Not,
+    Imply,
+    A,
+    E,
+    X,
+    F,
+    G,
+    U,
+    R
+} OpCode;
 
 class Formula {
    public:
@@ -61,12 +76,12 @@ class LogicOperator : public Formula {
     }
 };
 
-// ############ Define Atomic Formulas #################
+// ############ Define Const Formulas #################
 
 class Bool : public Formula {
    public:
     bool val;
-    Bool(bool val) : Formula(OpCode::Atomic, {}, {"true", "false"}), val(val) {}
+    Bool(bool val) : Formula(OpCode::Bool, {}, {"true", "false"}), val(val) {}
 
     std::shared_ptr<Bool> clone() const { return std::make_shared<Bool>(val); }
     std::string str() const override { return val ? "true" : "false"; }
@@ -294,7 +309,7 @@ class F : public TemporalOperator {
     std::shared_ptr<Formula> get_equivalent_restricted_formula()
         const override {
         return std::make_shared<class ::U>(
-            std::make_shared<Bool>(true),
+            std::make_shared<class ::Bool>(true),
             subformulas[0]->get_equivalent_restricted_formula());
     }
 };
@@ -313,7 +328,32 @@ class G : public TemporalOperator {
     std::shared_ptr<Formula> get_equivalent_restricted_formula()
         const override {
         return std::make_shared<class ::Not>(std::make_shared<class ::U>(
-            std::make_shared<Bool>(true),
+            std::make_shared<class ::Bool>(true),
             LNot(subformulas[0]->get_equivalent_restricted_formula())));
     }
 };
+
+// ######### Define Atomic Proposition ##########
+
+class AtomicProposition : public Formula {
+   public:
+    std::string name;
+    AtomicProposition(std::string name)
+        : Formula(OpCode::Atomic, {}, {}), name(name) {}
+
+    std::shared_ptr<AtomicProposition> clone() const {
+        return std::make_shared<AtomicProposition>(name);
+    }
+    std::string str() const override { return name; }
+
+    std::shared_ptr<Formula> get_equivalent_restricted_formula()
+        const override {
+        return clone();
+    }
+    std::shared_ptr<Formula> get_equivalent_non_fair_formula(
+        std::shared_ptr<Formula> fairAP) const override {
+        return std::make_shared<class ::And>(clone(), fairAP);
+    }
+    bool is_a_state_formula() const override { return true; }
+};
+
