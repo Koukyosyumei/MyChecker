@@ -395,8 +395,43 @@ inline std::shared_ptr<Formula> CTL::E::get_equivalent_restricted_formula()
 }
 
 inline std::shared_ptr<Formula> CTL::E::get_equivalent_non_fair_formula(
-    std::shared_ptr<Formula> fairAP) const {}
+    std::shared_ptr<Formula> fairAP) const {
+    std::shared_ptr<Formula> p_formula = subformulas[0];
+    std::shared_ptr<Formula> sf0 =
+        p_formula->subformulas[0]->get_equivalent_restricted_formula();
 
+    switch (p_formula->opcode) {
+        case (OpCode::X): {
+            return EX(std::make_shared<And>(sf0, fairAP));
+        }
+        case (OpCode::F): {
+            return EU(std::make_shared<CTL::Bool>(true),
+                      std::make_shared<And>(sf0, fairAP));
+        }
+        case (OpCode::G): {
+            return EG(std::make_shared<And>(sf0, fairAP));
+        }
+        case (OpCode::U): {
+            std::shared_ptr<Formula> sf1 =
+                p_formula->subformulas[1]->get_equivalent_restricted_formula();
+            return EU(sf0, std::make_shared<And>(sf1, fairAP));
+        }
+        case (OpCode::R): {
+            std::shared_ptr<Formula> sf1 =
+                p_formula->subformulas[1]->get_equivalent_restricted_formula();
+            std::shared_ptr<Formula> neg_sf1 = LNot(sf1);
+            std::shared_ptr<Formula> neg_sf0 = LNot(sf0);
+            return std::make_shared<CTL::Or>(
+                EU(sf1, std::make_shared<And>(
+                            std::make_shared<CTL::Not>(
+                                std::make_shared<CTL::Or>(neg_sf0, neg_sf1)),
+                            fairAP)),
+                EG(std::make_shared<And>(sf1, fairAP)));
+        }
+        default:
+            throw std::runtime_error(str() + " is not a CTL formula");
+    }
+}
 inline std::shared_ptr<Formula> CTL::A::get_equivalent_restricted_formula()
     const {
     std::shared_ptr<Formula> p_formula = subformulas[0];
