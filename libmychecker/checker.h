@@ -20,6 +20,22 @@ void _checkEU(Kripke &kripke, std::shared_ptr<Formula> formula,
               std::unordered_map<std::string, std::unordered_set<int>> &L);
 void _checkEX(Kripke &kripke, std::shared_ptr<Formula> formula,
               std::unordered_map<std::string, std::unordered_set<int>> &L);
+void _checkStateFormula(
+    Kripke &kripke, std::shared_ptr<Formula> formula,
+    std::unordered_map<std::string, std::unordered_set<int>> &L);
+
+inline void modelcheck(
+    Kripke &kripke, std::shared_ptr<Formula> formula,
+    std::unordered_map<std::string, std::unordered_set<int>> &L,
+    std::vector<std::unordered_set<int>> &F) {
+    if (F.size() != 0) {
+        std::string fair_label = kripke.label_fair_states(F);
+        formula = formula->get_equivalent_non_fair_formula(
+            std::make_shared<CTL::AtomicProposition>(fair_label));
+    }
+
+    return _checkStateFormula(kripke, formula, L);
+}
 
 inline void _checkStateFormula(
     Kripke &kripke, std::shared_ptr<Formula> formula,
