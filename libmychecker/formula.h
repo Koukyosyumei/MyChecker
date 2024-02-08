@@ -131,10 +131,10 @@ class Or : public LogicOperator {
         std::shared_ptr<Formula> fairAP) const override;
 };
 
-class And : public Formula {
+class And : public LogicOperator {
    public:
     And(std::shared_ptr<Formula> phi, std::shared_ptr<Formula> psi)
-        : Formula(OpCode::And, {phi, psi}, {"and", "&"}) {}
+        : LogicOperator(OpCode::And, {phi, psi}, {"and", "&"}) {}
     std::string str() const override {
         return "(" + subformulas[0]->str() + " and " + subformulas[1]->str() +
                ")";
@@ -144,10 +144,10 @@ class And : public Formula {
         std::shared_ptr<Formula> fairAP) const override;
 };
 
-class Imply : public Formula {
+class Imply : public LogicOperator {
    public:
     Imply(std::shared_ptr<Formula> phi, std::shared_ptr<Formula> psi)
-        : Formula(OpCode::Imply, {phi, psi}, {"->"}) {}
+        : LogicOperator(OpCode::Imply, {phi, psi}, {"->"}) {}
     std::string str() const override {
         return "(" + subformulas[0]->str() + " -> " + subformulas[1]->str() +
                ")";
@@ -185,6 +185,8 @@ class X : public TemporalOperator {
         : TemporalOperator(OpCode::X, {phi}, {"X"}) {}
 
     std::shared_ptr<Formula> get_equivalent_restricted_formula() const override;
+    std::shared_ptr<Formula> get_equivalent_non_fair_formula(
+        std::shared_ptr<Formula> fairAP) const override;
 };
 
 class U : public TemporalOperator {
@@ -514,10 +516,16 @@ inline std::shared_ptr<Formula> CTL::A::get_equivalent_non_fair_formula(
             throw std::runtime_error(str() + " is not a CTL formula");
     }
 }
+
 inline std::shared_ptr<Formula> CTL::X::get_equivalent_restricted_formula()
     const {
     return std::make_shared<CTL::X>(
         subformulas[0]->get_equivalent_restricted_formula());
+}
+inline std::shared_ptr<Formula> CTL::X::get_equivalent_non_fair_formula(
+    std::shared_ptr<Formula> fairAP) const {
+    return std::make_shared<CTL::X>(
+        subformulas[0]->get_equivalent_non_fair_formula(fairAP));
 }
 
 inline std::shared_ptr<Formula> CTL::U::get_equivalent_non_fair_formula(
